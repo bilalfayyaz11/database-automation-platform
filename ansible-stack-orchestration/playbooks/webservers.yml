@@ -1,0 +1,86 @@
+---
+- name: Deploy Web Application Server
+  hosts: web_servers
+  become: yes
+  gather_facts: yes
+  vars:
+    app_name: webapp
+    db_name: webapp_db
+    db_user: webapp_user
+    vault_db_password: SecurePassword123!
+
+  tasks:
+    - name: Install Apache and PHP packages
+      yum:
+        name:
+          - httpd
+          - php
+          - php-mysqlnd
+          - php-json
+        state: present
+
+    - name: Configure Apache listen port
+      lineinfile:
+        path: /etc/httpd/conf/httpd.conf
+        regexp: '^Listen '
+        line: 'Listen 8080'
+
+    - name: Create application directory
+      file:
+        path: "/var/www/html/{{ app_name }}"
+        state: directory
+        owner: apache
+        group: apache
+        mode: '0755'
+
+    - name: Deploy application config
+      template:
+        src: app_config.php.j2
+        dest: "/var/www/html/{{ app_name }}/config.php"
+        owner: apache
+        group: apache
+        mode: '0644'
+
+    - name: Deploy sample PHP application
+      copy:
+        content: |
+          <?php
+          require_once 'config.php';
+          echo "<h1>Web Application Stack</h1>";
+          echo "<p>Hostname: " . gethostname() . "</p>";
+          echo "<p>Database Host: " . DB_HOST . "</p>";
+          echo "<p>Status: Application deployed through Ansible orchestration.</p>";
+          ?>
+        dest: "/var/www/html/{{ app_name }}/index.php"
+        owner: apache
+        group: apache
+        mode: '0644'
+
+    - name: Deploy Apache virtual host
+      template:
+        src: webapp.conf.j2
+        dest: /etc/httpd/conf.d/webapp.conf
+      notify: restart apache
+
+    - name: Start and enable Apache
+      systemd:
+        name: httpd
+        state: started
+        enabled: yes
+
+    - name: Open application port
+      ansible.posix.firewalld:
+        port: 8080/tcp
+        permanent: yes
+        state: enabled
+        immediate: yes
+
+    - name: Set web deployment fact
+      set_fact:
+        webserver_deployed: true
+
+  handlers:
+    - name: restart apache
+      systemd:
+        name: httpd
+        state: restarted

@@ -1,0 +1,50 @@
+---
+- name: Deploy Load Balancer
+  hosts: load_balancer
+  become: yes
+  gather_facts: yes
+  vars:
+    app_name: webapp
+    db_name: webapp_db
+    db_user: webapp_user
+    vault_db_password: SecurePassword123!
+
+  tasks:
+    - name: Install HAProxy
+      yum:
+        name: haproxy
+        state: present
+
+    - name: Deploy HAProxy configuration
+      template:
+        src: haproxy.cfg.j2
+        dest: /etc/haproxy/haproxy.cfg
+        backup: yes
+      notify: restart haproxy
+
+    - name: Start and enable HAProxy
+      systemd:
+        name: haproxy
+        state: started
+        enabled: yes
+
+    - name: Open HTTP and HAProxy stats ports
+      ansible.posix.firewalld:
+        port: "{{ item }}"
+        permanent: yes
+        state: enabled
+        immediate: yes
+      loop:
+        - 80/tcp
+        - 8404/tcp
+
+    - name: Set load balancer deployment fact
+      set_fact:
+        loadbalancer_deployed: true
+        loadbalancer_url: "http://127.0.0.1"
+
+  handlers:
+    - name: restart haproxy
+      systemd:
+        name: haproxy
+        state: restarted

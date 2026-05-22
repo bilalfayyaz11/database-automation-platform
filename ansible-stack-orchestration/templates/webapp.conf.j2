@@ -1,0 +1,11 @@
+<VirtualHost *:8080>
+    DocumentRoot /var/www/html/{{ app_name }}
+
+    <Directory /var/www/html/{{ app_name }}>
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    ErrorLog logs/{{ app_name }}_error.log
+    CustomLog logs/{{ app_name }}_access.log combined
+</VirtualHost>

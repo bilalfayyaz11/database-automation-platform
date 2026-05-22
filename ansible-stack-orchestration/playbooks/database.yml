@@ -1,0 +1,52 @@
+---
+- name: Deploy Database Server
+  hosts: database_servers
+  become: yes
+  gather_facts: yes
+  vars:
+    app_name: webapp
+    db_name: webapp_db
+    db_user: webapp_user
+    vault_db_password: SecurePassword123!
+
+  tasks:
+    - name: Install MariaDB packages
+      yum:
+        name:
+          - mariadb-server
+          - mariadb
+          - python3-PyMySQL
+        state: present
+
+    - name: Start and enable MariaDB
+      systemd:
+        name: mariadb
+        state: started
+        enabled: yes
+
+    - name: Create application database
+      community.mysql.mysql_db:
+        name: "{{ db_name }}"
+        state: present
+        login_unix_socket: /var/lib/mysql/mysql.sock
+
+    - name: Create database user
+      community.mysql.mysql_user:
+        name: "{{ db_user }}"
+        password: "{{ vault_db_password }}"
+        priv: "{{ db_name }}.*:ALL"
+        host: "%"
+        state: present
+        login_unix_socket: /var/lib/mysql/mysql.sock
+
+    - name: Open MySQL firewall service
+      ansible.posix.firewalld:
+        service: mysql
+        permanent: yes
+        state: enabled
+        immediate: yes
+
+    - name: Set database deployment facts
+      set_fact:
+        database_deployed: true
+        database_host: "127.0.0.1"

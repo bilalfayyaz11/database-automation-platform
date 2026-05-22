@@ -1,0 +1,42 @@
+---
+- name: Setup Basic Monitoring
+  hosts: all
+  become: yes
+  gather_facts: yes
+  vars:
+    app_name: webapp
+    db_name: webapp_db
+    db_user: webapp_user
+    vault_db_password: SecurePassword123!
+
+  tasks:
+    - name: Install monitoring utilities
+      yum:
+        name:
+          - iotop
+          - net-tools
+        state: present
+      ignore_errors: yes
+
+    - name: Create monitoring script
+      copy:
+        content: |
+          #!/bin/bash
+          echo "=== System Status Report ==="
+          echo "Hostname: $(hostname)"
+          echo "Date: $(date)"
+          echo "Uptime: $(uptime)"
+          echo "Disk Usage:"
+          df -h /
+          echo "Memory Usage:"
+          free -h
+          echo "Active Services:"
+          systemctl list-units --type=service --state=active | grep -E "(httpd|mariadb|haproxy)" || true
+        dest: /usr/local/bin/system-status.sh
+        mode: '0755'
+
+    - name: Create monitoring cron job
+      cron:
+        name: System status monitoring
+        minute: "*/15"
+        job: "/usr/local/bin/system-status.sh >> /var/log/system-status.log 2>&1"

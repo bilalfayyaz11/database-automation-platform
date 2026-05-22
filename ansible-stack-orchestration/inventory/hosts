@@ -1,0 +1,11 @@
+[database_servers]
+localhost ansible_connection=local
+
+[web_servers]
+localhost ansible_connection=local
+
+[load_balancer]
+localhost ansible_connection=local
+
+[all:vars]
+ansible_user=centos
