@@ -1,0 +1,44 @@
+---
+- name: Secure Application Deployment
+  hosts: webservers
+  gather_facts: yes
+
+  vars_files:
+    - ../vars/database_secrets.yml
+    - ../vars/user_secrets.yml
+    - ../vars/api_secrets.yml
+
+  tasks:
+    - name: Display safe deployment info
+      debug:
+        msg: "Deploying securely to {{ ansible_hostname }}"
+
+    - name: Create secure config directory
+      file:
+        path: /tmp/app-config
+        state: directory
+        mode: '0750'
+
+    - name: Generate database config
+      template:
+        src: ../templates/database.conf.j2
+        dest: /tmp/app-config/database.conf
+        mode: '0600'
+
+    - name: Generate API config
+      template:
+        src: ../templates/api.conf.j2
+        dest: /tmp/app-config/api.conf
+        mode: '0600'
+
+    - name: Create service account
+      user:
+        name: appservice
+        password: "{{ service_account_password | password_hash('sha512') }}"
+        shell: /bin/bash
+        create_home: yes
+      become: yes
+
+    - name: Deployment completion message
+      debug:
+        msg: "Secure configuration deployment completed"
