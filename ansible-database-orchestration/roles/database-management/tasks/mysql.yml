@@ -1,0 +1,6 @@
+---
+- name: Ensure MySQL service is running
+  systemd:
+    name: mysqld
+    state: started
+    enabled: yes

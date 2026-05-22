@@ -1,0 +1,6 @@
+---
+- name: Ensure PostgreSQL service is running
+  systemd:
+    name: postgresql
+    state: started
+    enabled: yes

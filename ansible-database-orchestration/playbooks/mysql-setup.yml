@@ -1,0 +1,130 @@
+---
+- name: Install and Configure MySQL Server
+  hosts: mysql_servers
+  become: yes
+  vars:
+    mysql_root_password: "SecureRootPass123!"
+    mysql_databases:
+      - name: webapp_db
+        encoding: utf8mb4
+        collation: utf8mb4_unicode_ci
+      - name: inventory_db
+        encoding: utf8mb4
+        collation: utf8mb4_unicode_ci
+    mysql_users:
+      - name: webapp_user
+        password: "WebAppPass123!"
+        priv: "webapp_db.*:ALL"
+        host: "%"
+      - name: inventory_user
+        password: "InventoryPass123!"
+        priv: "inventory_db.*:SELECT,INSERT,UPDATE,DELETE"
+        host: "localhost"
+
+  tasks:
+    - name: Detect operating system
+      debug:
+        msg: "Running on {{ ansible_distribution }} {{ ansible_distribution_major_version }}"
+
+    - name: Install MySQL packages on RHEL/CentOS
+      dnf:
+        name:
+          - mysql-server
+          - python3-PyMySQL
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    - name: Install MySQL packages on Ubuntu/Debian
+      apt:
+        name:
+          - mysql-server
+          - mysql-client
+          - python3-pymysql
+        state: present
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
+    - name: Start and enable MySQL service on RHEL/CentOS
+      systemd:
+        name: mysqld
+        state: started
+        enabled: yes
+      when: ansible_os_family == "RedHat"
+
+    - name: Start and enable MySQL service on Ubuntu/Debian
+      systemd:
+        name: mysql
+        state: started
+        enabled: yes
+      when: ansible_os_family == "Debian"
+
+    - name: Set MySQL service variable
+      set_fact:
+        mysql_service_name: "{{ 'mysqld' if ansible_os_family == 'RedHat' else 'mysql' }}"
+
+    - name: Create MySQL databases
+      community.mysql.mysql_db:
+        name: "{{ item.name }}"
+        encoding: "{{ item.encoding }}"
+        collation: "{{ item.collation }}"
+        state: present
+        login_unix_socket: /var/lib/mysql/mysql.sock
+      loop: "{{ mysql_databases }}"
+      when: ansible_os_family == "RedHat"
+
+    - name: Create MySQL databases on Debian
+      community.mysql.mysql_db:
+        name: "{{ item.name }}"
+        encoding: "{{ item.encoding }}"
+        collation: "{{ item.collation }}"
+        state: present
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+      loop: "{{ mysql_databases }}"
+      when: ansible_os_family == "Debian"
+
+    - name: Create MySQL users on RHEL/CentOS
+      community.mysql.mysql_user:
+        name: "{{ item.name }}"
+        password: "{{ item.password }}"
+        priv: "{{ item.priv }}"
+        host: "{{ item.host }}"
+        state: present
+        login_unix_socket: /var/lib/mysql/mysql.sock
+      loop: "{{ mysql_users }}"
+      when: ansible_os_family == "RedHat"
+
+    - name: Create MySQL users on Debian
+      community.mysql.mysql_user:
+        name: "{{ item.name }}"
+        password: "{{ item.password }}"
+        priv: "{{ item.priv }}"
+        host: "{{ item.host }}"
+        state: present
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+      loop: "{{ mysql_users }}"
+      when: ansible_os_family == "Debian"
+
+    - name: Configure MySQL bind address on RHEL/CentOS
+      lineinfile:
+        path: /etc/my.cnf.d/mysql-server.cnf
+        regexp: '^bind-address'
+        line: 'bind-address = 127.0.0.1'
+        insertafter: '^\[mysqld\]'
+        backup: yes
+      notify: restart mysql
+      when: ansible_os_family == "RedHat"
+
+    - name: Configure MySQL bind address on Debian
+      lineinfile:
+        path: /etc/mysql/mysql.conf.d/mysqld.cnf
+        regexp: '^bind-address'
+        line: 'bind-address = 127.0.0.1'
+        backup: yes
+      notify: restart mysql
+      when: ansible_os_family == "Debian"
+
+  handlers:
+    - name: restart mysql
+      systemd:
+        name: "{{ mysql_service_name }}"
+        state: restarted

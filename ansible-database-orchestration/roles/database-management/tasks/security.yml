@@ -1,0 +1,9 @@
+---
+- name: Verify database services
+  shell: |
+    systemctl is-active mysqld || true
+    systemctl is-active postgresql || true
+  register: db_services
+
+- debug:
+    var: db_services.stdout_lines

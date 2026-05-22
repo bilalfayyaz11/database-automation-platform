@@ -1,0 +1,112 @@
+---
+- name: Install and Configure PostgreSQL Server
+  hosts: postgresql_servers
+  become: yes
+  vars:
+    postgresql_databases:
+      - name: ecommerce_db
+        owner: ecommerce_user
+      - name: analytics_db
+        owner: analytics_user
+    postgresql_users:
+      - name: ecommerce_user
+        password: "EcommercePass123!"
+      - name: analytics_user
+        password: "AnalyticsPass123!"
+      - name: readonly_user
+        password: "ReadOnlyPass123!"
+
+  tasks:
+    - name: Install PostgreSQL packages on RHEL/CentOS
+      dnf:
+        name:
+          - postgresql-server
+          - postgresql-contrib
+          - python3-psycopg2
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    - name: Initialize PostgreSQL database on RHEL/CentOS
+      command: postgresql-setup --initdb
+      args:
+        creates: /var/lib/pgsql/data/PG_VERSION
+      when: ansible_os_family == "RedHat"
+
+    - name: Install PostgreSQL packages on Ubuntu/Debian
+      apt:
+        name:
+          - postgresql
+          - postgresql-contrib
+          - python3-psycopg2
+          - acl
+        state: present
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
+    - name: Start and enable PostgreSQL service
+      systemd:
+        name: postgresql
+        state: started
+        enabled: yes
+
+    - name: Create PostgreSQL users
+      community.postgresql.postgresql_user:
+        name: "{{ item.name }}"
+        password: "{{ item.password }}"
+        role_attr_flags: "NOSUPERUSER"
+        state: present
+      become_user: postgres
+      loop: "{{ postgresql_users }}"
+
+    - name: Create PostgreSQL databases
+      community.postgresql.postgresql_db:
+        name: "{{ item.name }}"
+        owner: "{{ item.owner }}"
+        encoding: UTF8
+        state: present
+      become_user: postgres
+      loop: "{{ postgresql_databases }}"
+
+    - name: Grant readonly user connect privileges
+      community.postgresql.postgresql_privs:
+        database: "{{ item }}"
+        roles: readonly_user
+        privs: CONNECT
+        type: database
+        state: present
+      become_user: postgres
+      loop:
+        - ecommerce_db
+        - analytics_db
+
+    - name: Configure PostgreSQL listen addresses on RHEL/CentOS
+      lineinfile:
+        path: /var/lib/pgsql/data/postgresql.conf
+        regexp: "^#?listen_addresses"
+        line: "listen_addresses = 'localhost'"
+        backup: yes
+      notify: restart postgresql
+      when: ansible_os_family == "RedHat"
+
+    - name: Configure PostgreSQL listen addresses on Debian
+      community.postgresql.postgresql_set:
+        name: listen_addresses
+        value: localhost
+      become_user: postgres
+      notify: restart postgresql
+      when: ansible_os_family == "Debian"
+
+    - name: Add PostgreSQL local password authentication on RHEL/CentOS
+      lineinfile:
+        path: /var/lib/pgsql/data/pg_hba.conf
+        line: "host all all 127.0.0.1/32 scram-sha-256"
+        insertafter: EOF
+        backup: yes
+      notify: restart postgresql
+      when: ansible_os_family == "RedHat"
+
+  handlers:
+    - name: restart postgresql
+      systemd:
+        name: postgresql
+        state: restarted

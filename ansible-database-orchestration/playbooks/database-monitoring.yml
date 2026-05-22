@@ -1,0 +1,101 @@
+---
+- name: Configure Database Monitoring
+  hosts: database_servers
+  become: yes
+
+  tasks:
+    - name: Install base monitoring tools on RHEL/CentOS
+      dnf:
+        name:
+          - procps-ng
+          - iproute
+          - sysstat
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    - name: Install base monitoring tools on Debian/Ubuntu
+      apt:
+        name:
+          - procps
+          - iproute2
+          - sysstat
+        state: present
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
+    - name: Create general database health check script
+      copy:
+        content: |
+          #!/bin/bash
+
+          echo "=== DATABASE SERVER HEALTH CHECK ==="
+          echo "Date: $(date)"
+          echo "Hostname: $(hostname)"
+          echo
+
+          echo "=== SYSTEM UPTIME ==="
+          uptime
+          echo
+
+          echo "=== MEMORY USAGE ==="
+          free -h
+          echo
+
+          echo "=== DISK USAGE ==="
+          df -h
+          echo
+
+          echo "=== DATABASE PORTS ==="
+          ss -tulnp | grep -E '3306|5432' || echo "No database ports currently listening"
+          echo
+
+          echo "=== TOP CPU PROCESSES ==="
+          ps aux --sort=-%cpu | head
+        dest: /usr/local/bin/db-health-check.sh
+        mode: '0755'
+
+- name: Configure MySQL Monitoring
+  hosts: mysql_servers
+  become: yes
+
+  tasks:
+    - name: Create MySQL monitoring script
+      copy:
+        content: |
+          #!/bin/bash
+
+          echo "=== MYSQL STATUS ==="
+          systemctl status mysqld --no-pager
+          echo
+
+          echo "=== MYSQL DATABASES ==="
+          mysql -e "SHOW DATABASES;"
+          echo
+
+          echo "=== MYSQL PROCESSLIST ==="
+          mysql -e "SHOW PROCESSLIST;"
+        dest: /usr/local/bin/mysql-status.sh
+        mode: '0755'
+
+- name: Configure PostgreSQL Monitoring
+  hosts: postgresql_servers
+  become: yes
+
+  tasks:
+    - name: Create PostgreSQL monitoring script
+      copy:
+        content: |
+          #!/bin/bash
+
+          echo "=== POSTGRESQL STATUS ==="
+          systemctl status postgresql --no-pager
+          echo
+
+          echo "=== POSTGRESQL DATABASES ==="
+          sudo -u postgres psql -c '\l'
+          echo
+
+          echo "=== ACTIVE CONNECTIONS ==="
+          sudo -u postgres psql -c "SELECT count(*) AS active_connections FROM pg_stat_activity;"
+        dest: /usr/local/bin/postgresql-status.sh
+        mode: '0755'

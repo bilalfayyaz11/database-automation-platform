@@ -1,0 +1,10 @@
+---
+- name: Validate Database Management Role
+  hosts: database_servers
+  become: yes
+
+  vars:
+    database_type: mysql
+
+  roles:
+    - database-management

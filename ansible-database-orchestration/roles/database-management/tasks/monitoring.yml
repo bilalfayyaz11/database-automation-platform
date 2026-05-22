@@ -1,0 +1,9 @@
+---
+- name: Verify monitoring scripts exist
+  shell: |
+    ls -la /usr/local/bin/*health* || true
+    ls -la /usr/local/bin/*status* || true
+  register: monitoring_files
+
+- debug:
+    var: monitoring_files.stdout_lines

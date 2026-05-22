@@ -1,0 +1,12 @@
+---
+database_type: mysql
+
+backup_enabled: true
+monitoring_enabled: true
+security_hardening: true
+
+mysql_port: 3306
+postgresql_port: 5432
+
+mysql_bind_address: 127.0.0.1
+postgresql_listen_addresses: localhost

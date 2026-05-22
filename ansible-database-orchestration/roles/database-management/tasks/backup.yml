@@ -1,0 +1,5 @@
+---
+- name: Verify backup directory exists
+  file:
+    path: /opt/database-backups
+    state: directory

@@ -1,0 +1,106 @@
+---
+- name: Secure Database Installations
+  hosts: database_servers
+  become: yes
+  tasks:
+    - name: Install fail2ban on RHEL/CentOS if available
+      dnf:
+        name: fail2ban
+        state: present
+      when: ansible_os_family == "RedHat"
+      ignore_errors: yes
+      register: fail2ban_install
+
+    - name: Install fail2ban on Ubuntu/Debian
+      apt:
+        name: fail2ban
+        state: present
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
+    - name: Configure fail2ban SSH protection
+      copy:
+        content: |
+          [sshd]
+          enabled = true
+          port = ssh
+          filter = sshd
+          backend = systemd
+          maxretry = 3
+          bantime = 3600
+          findtime = 600
+        dest: /etc/fail2ban/jail.local
+        backup: yes
+      notify: restart fail2ban
+      when: fail2ban_install is not failed
+
+    - name: Start and enable fail2ban
+      systemd:
+        name: fail2ban
+        state: started
+        enabled: yes
+      when: fail2ban_install is not failed
+
+- name: Secure MySQL Installation
+  hosts: mysql_servers
+  become: yes
+  tasks:
+    - name: Harden MySQL configuration on RHEL/CentOS
+      lineinfile:
+        path: /etc/my.cnf.d/mysql-server.cnf
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        insertafter: '^\[mysqld\]'
+        backup: yes
+      loop:
+        - { regexp: '^local-infile', line: 'local-infile = 0' }
+        - { regexp: '^skip-show-database', line: 'skip-show-database' }
+        - { regexp: '^skip-symbolic-links', line: 'skip-symbolic-links = 1' }
+      notify: restart mysql
+      when: ansible_os_family == "RedHat"
+
+    - name: Harden MySQL configuration on Ubuntu/Debian
+      lineinfile:
+        path: /etc/mysql/mysql.conf.d/mysqld.cnf
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        backup: yes
+      loop:
+        - { regexp: '^local-infile', line: 'local-infile = 0' }
+        - { regexp: '^skip-show-database', line: 'skip-show-database' }
+        - { regexp: '^skip-symbolic-links', line: 'skip-symbolic-links = 1' }
+      notify: restart mysql
+      when: ansible_os_family == "Debian"
+
+- name: Secure PostgreSQL Installation
+  hosts: postgresql_servers
+  become: yes
+  tasks:
+    - name: Enable PostgreSQL connection logging
+      lineinfile:
+        path: /var/lib/pgsql/data/postgresql.conf
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        backup: yes
+      loop:
+        - { regexp: "^#?log_connections", line: "log_connections = on" }
+        - { regexp: "^#?log_disconnections", line: "log_disconnections = on" }
+        - { regexp: "^#?log_statement", line: "log_statement = 'ddl'" }
+      notify: restart postgresql
+      when: ansible_os_family == "RedHat"
+
+  handlers:
+    - name: restart postgresql
+      systemd:
+        name: postgresql
+        state: restarted
+
+    - name: restart mysql
+      systemd:
+        name: mysqld
+        state: restarted
+
+    - name: restart fail2ban
+      systemd:
+        name: fail2ban
+        state: restarted
