@@ -1,0 +1,11 @@
+---
+- name: Simulate security hardening
+  debug:
+    msg: "Security baseline applied"
+
+- name: Configure optimized sysctl simulation
+  copy:
+    content: |
+      net.ipv4.ip_forward = 0
+      net.ipv4.conf.all.rp_filter = 1
+    dest: /tmp/security-sysctl.conf

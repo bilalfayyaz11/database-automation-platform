@@ -1,0 +1,27 @@
+---
+- name: Parallel Optimization
+  hosts: all
+  strategy: free
+  gather_facts: yes
+
+  tasks:
+
+    - name: Parallel directory creation
+      file:
+        path: "{{ item }}"
+        state: directory
+      loop:
+        - /tmp/app1
+        - /tmp/app2
+        - /tmp/app3
+        - /tmp/logs
+
+    - name: Parallel simulated service setup
+      shell: sleep 5
+      async: 20
+      poll: 0
+      register: service_jobs
+
+    - name: Validate parallel workflow
+      debug:
+        msg: "Parallel execution strategy active"

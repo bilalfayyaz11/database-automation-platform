@@ -1,0 +1,23 @@
+---
+- name: Install database packages
+  package:
+    name:
+      - mariadb-server
+      - python3-PyMySQL
+    state: present
+  become: yes
+  ignore_errors: yes
+
+- name: Create database configuration directory
+  file:
+    path: /tmp/database-config
+    state: directory
+    mode: '0755'
+
+- name: Generate database configuration
+  copy:
+    content: |
+      [database]
+      name=optimized_db
+      user=webapp
+    dest: /tmp/database-config/database.conf

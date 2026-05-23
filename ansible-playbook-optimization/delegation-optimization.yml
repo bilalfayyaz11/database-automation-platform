@@ -1,0 +1,29 @@
+---
+- name: Delegation Optimization
+  hosts: all
+  gather_facts: yes
+
+  tasks:
+
+    - name: Generate artifact on controller
+      copy:
+        content: |
+          Deployment Artifact
+          Generated centrally
+        dest: "/tmp/deployment-artifact.txt"
+      delegate_to: localhost
+      run_once: true
+
+    - name: Simulate DNS lookup delegation
+      command: hostname
+      delegate_to: localhost
+      register: delegated_result
+
+    - name: Display delegation result
+      debug:
+        msg: "Delegated task output: {{ delegated_result.stdout }}"
+
+    - name: Copy centralized artifact
+      copy:
+        src: /tmp/deployment-artifact.txt
+        dest: /tmp/copied-artifact.txt

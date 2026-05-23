@@ -1,0 +1,25 @@
+---
+- name: Install web server packages
+  package:
+    name: "{{ webserver_packages }}"
+    state: present
+  become: yes
+  ignore_errors: yes
+
+- name: Create optimized web directory
+  file:
+    path: /tmp/optimized-web
+    state: directory
+    mode: '0755'
+
+- name: Deploy web configuration
+  template:
+    src: httpd.conf.j2
+    dest: /tmp/optimized-web/httpd.conf
+
+- name: Deploy application page
+  copy:
+    content: |
+      <h1>Optimized Ansible Deployment</h1>
+      <p>Execution strategy optimized.</p>
+    dest: /tmp/optimized-web/index.html

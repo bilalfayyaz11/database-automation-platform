@@ -1,0 +1,19 @@
+---
+- name: Create monitoring directory
+  file:
+    path: /tmp/monitoring
+    state: directory
+    mode: '0755'
+
+- name: Generate monitoring metrics
+  shell: |
+    echo "CPU: $(uptime)"
+    echo "Memory:"
+    free -h
+  register: monitoring_output
+  changed_when: false
+
+- name: Store monitoring report
+  copy:
+    content: "{{ monitoring_output.stdout }}"
+    dest: /tmp/monitoring/system-report.txt

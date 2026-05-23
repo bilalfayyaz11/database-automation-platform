@@ -1,0 +1,33 @@
+---
+- name: Async Execution Optimization
+  hosts: all
+  gather_facts: yes
+
+  tasks:
+
+    - name: Simulate long-running task
+      shell: sleep 15
+      async: 30
+      poll: 0
+      register: async_job
+
+    - name: Continue execution immediately
+      debug:
+        msg: "Async job running in background"
+
+    - name: Perform parallel task
+      copy:
+        content: "Parallel execution active"
+        dest: /tmp/parallel-task.txt
+
+    - name: Wait for async completion
+      async_status:
+        jid: "{{ async_job.ansible_job_id }}"
+      register: async_result
+      until: async_result.finished
+      retries: 10
+      delay: 2
+
+    - name: Report async completion
+      debug:
+        msg: "Async execution completed successfully"

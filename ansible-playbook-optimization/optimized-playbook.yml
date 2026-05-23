@@ -1,0 +1,21 @@
+---
+- name: Optimized Infrastructure Deployment
+  hosts: all
+  gather_facts: yes
+  strategy: free
+
+  roles:
+    - security
+    - database
+    - webserver
+    - application
+    - monitoring
+
+  post_tasks:
+
+    - name: Deployment summary
+      debug:
+        msg: |
+          Optimized deployment completed.
+          Host: {{ inventory_hostname }}
+          Execution strategy: free
