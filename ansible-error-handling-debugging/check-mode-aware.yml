@@ -1,0 +1,36 @@
+---
+- name: Check Mode Aware Playbook
+  hosts: webservers
+
+  tasks:
+
+    - name: Running in check mode
+      debug:
+        msg: "Dry run active"
+      when: ansible_check_mode
+
+    - name: Running normally
+      debug:
+        msg: "Applying real changes"
+      when: not ansible_check_mode
+
+    - name: Create test directory
+      file:
+        path: /tmp/test-directory
+        state: directory
+        mode: '0755'
+
+    - name: Gather directory info
+      stat:
+        path: /tmp/test-directory
+      register: dir_info
+
+    - name: Report directory existence
+      debug:
+        msg: "Directory exists: {{ dir_info.stat.exists }}"
+      when: not ansible_check_mode
+
+    - name: Dry-run message
+      debug:
+        msg: "Directory would be created"
+      when: ansible_check_mode

@@ -1,0 +1,41 @@
+---
+- name: Basic Error Handling
+  hosts: webservers
+
+  tasks:
+
+    - name: Intentional failure
+      command: /bin/false
+      register: failed_result
+      ignore_errors: yes
+
+    - name: Report failure code
+      debug:
+        msg: "Return code: {{ failed_result.rc }}"
+
+    - name: Install fake package
+      package:
+        name: package-that-does-not-exist-123
+        state: present
+      become: yes
+      ignore_errors: yes
+      register: package_result
+
+    - name: Handle package failure
+      debug:
+        msg: "Installation failed as expected"
+      when: package_result.failed
+
+    - name: Continue execution
+      debug:
+        msg: "Automation continues despite failures"
+
+    - name: Nonexistent directory test
+      shell: ls /nonexistent-directory
+      ignore_errors: yes
+      register: ls_result
+      changed_when: false
+
+    - name: Directory result
+      debug:
+        msg: "Directory command {{ 'succeeded' if ls_result.rc == 0 else 'failed' }}"

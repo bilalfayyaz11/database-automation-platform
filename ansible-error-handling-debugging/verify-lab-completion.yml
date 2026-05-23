@@ -1,0 +1,37 @@
+---
+- name: Verify Lab Completion
+  hosts: webservers
+  gather_facts: yes
+
+  tasks:
+
+    - name: Verify debug functionality
+      debug:
+        msg: "Debug verification successful on {{ ansible_hostname }}"
+
+    - name: Verify check mode awareness
+      debug:
+        msg: "Check mode status: {{ ansible_check_mode }}"
+
+    - name: Verify block/rescue handling
+      block:
+
+        - name: Successful validation task
+          debug:
+            msg: "Validation successful"
+
+      rescue:
+
+        - name: Rescue validation
+          debug:
+            msg: "Recovery executed"
+
+      always:
+
+        - name: Always verification
+          debug:
+            msg: "Always block verified"
+
+    - name: Final completion message
+      debug:
+        msg: "Lab 19 completed successfully"

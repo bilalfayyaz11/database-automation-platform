@@ -1,0 +1,48 @@
+---
+- name: Advanced Error Handling
+  hosts: webservers
+
+  tasks:
+
+    - name: Web deployment block
+
+      block:
+
+        - name: Create web directory
+          file:
+            path: /tmp/webapp
+            state: directory
+            mode: '0755'
+
+        - name: Simulate deployment failure
+          command: /bin/false
+
+      rescue:
+
+        - name: Rescue deployment
+          debug:
+            msg: "Deployment failed. Executing recovery workflow."
+
+        - name: Create failure report
+          copy:
+            content: |
+              Deployment Failure Report
+              ========================
+              Host: {{ inventory_hostname }}
+              Time: {{ ansible_date_time.iso8601 }}
+            dest: /tmp/webapp/failure-report.txt
+
+      always:
+
+        - name: Always execute cleanup
+          debug:
+            msg: "Cleanup and logging executed"
+
+        - name: Generate audit log
+          copy:
+            content: |
+              Automation Audit Log
+              ===================
+              Host: {{ inventory_hostname }}
+              Execution completed.
+            dest: /tmp/webapp/audit.log

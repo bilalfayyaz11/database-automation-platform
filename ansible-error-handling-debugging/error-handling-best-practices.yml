@@ -1,0 +1,57 @@
+---
+- name: Error Handling Best Practices
+  hosts: webservers
+
+  vars:
+    max_retries: 3
+    retry_delay: 2
+
+  tasks:
+
+    - name: Retry logic demonstration
+      command: /bin/false
+      register: retry_result
+      retries: "{{ max_retries }}"
+      delay: "{{ retry_delay }}"
+      ignore_errors: yes
+
+    - name: Retry result
+      debug:
+        msg: "Task failed after retries as expected"
+
+    - name: Simulated resilient workflow
+      block:
+
+        - name: Create application structure
+          file:
+            path: /tmp/resilient-app
+            state: directory
+
+        - name: Simulated failure
+          fail:
+            msg: "Simulated infrastructure issue"
+
+      rescue:
+
+        - name: Recovery procedure
+          debug:
+            msg: "Recovery workflow activated"
+
+        - name: Create recovery report
+          copy:
+            content: |
+              Recovery Report
+              ===============
+              Infrastructure recovery triggered.
+            dest: /tmp/resilient-app/recovery-report.txt
+
+      always:
+
+        - name: Final verification
+          stat:
+            path: /tmp/resilient-app
+          register: app_status
+
+        - name: Report final status
+          debug:
+            msg: "Application directory exists: {{ app_status.stat.exists }}"

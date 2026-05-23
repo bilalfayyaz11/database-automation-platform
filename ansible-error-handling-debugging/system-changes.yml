@@ -1,0 +1,35 @@
+---
+- name: System Configuration Changes
+  hosts: webservers
+
+  vars:
+    packages_to_install:
+      - curl
+      - wget
+
+  tasks:
+
+    - name: Install packages
+      package:
+        name: "{{ packages_to_install }}"
+        state: present
+      become: yes
+      ignore_errors: yes
+
+    - name: Create application directory
+      file:
+        path: /tmp/myapp
+        state: directory
+        mode: '0755'
+
+    - name: Create config file
+      copy:
+        content: |
+          app_name=MyWebApp
+          debug=false
+        dest: /tmp/myapp/config.conf
+        mode: '0644'
+
+    - name: Completion message
+      debug:
+        msg: "Configuration completed"

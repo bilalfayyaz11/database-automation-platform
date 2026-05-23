@@ -1,0 +1,47 @@
+---
+- name: Advanced Debugging
+  hosts: webservers
+  gather_facts: yes
+
+  vars:
+    users:
+      - name: "alice"
+        role: "admin"
+        active: true
+
+      - name: "bob"
+        role: "user"
+        active: false
+
+      - name: "charlie"
+        role: "developer"
+        active: true
+
+  tasks:
+
+    - name: Debug user loop
+      debug:
+        msg: "User={{ item.name }}, Role={{ item.role }}, Active={{ item.active }}"
+      loop: "{{ users }}"
+
+    - name: Debug active users only
+      debug:
+        msg: "Active user found: {{ item.name }}"
+      loop: "{{ users }}"
+      when: item.active
+
+    - name: Debug variable metadata
+      debug:
+        msg:
+          - "Variable type: {{ users | type_debug }}"
+          - "Total users: {{ users | length }}"
+
+    - name: Verbose-only debug
+      debug:
+        msg: "This appears only with verbosity"
+        verbosity: 1
+
+    - name: Debug IPv4 addresses
+      debug:
+        var: ansible_all_ipv4_addresses
+      when: ansible_all_ipv4_addresses is defined
