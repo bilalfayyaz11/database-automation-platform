@@ -1,0 +1,11 @@
+[Journal]
+Storage=persistent
+Compress=yes
+SystemMaxUse=2G
+SystemKeepFree=1G
+SystemMaxFileSize=200M
+SystemMaxFiles=10
+RuntimeMaxUse=500M
+RuntimeKeepFree=100M
+MaxRetentionSec=2month
+MaxFileSec=1week
